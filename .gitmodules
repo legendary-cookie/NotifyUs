@@ -1,0 +1,3 @@
+[submodule "server/lib/httpxx"]
+	path = server/lib/httpxx
+	url = https://github.com/AndreLouisCaron/httpxx
