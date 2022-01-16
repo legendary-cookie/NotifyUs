@@ -7,6 +7,8 @@ add_subdirectory(lib/httpxx)
 
 set(SOURCES
 	src/main.cc
+	src/TCPServer.cc
+	src/TCPConnectionHandler.cc
 )
 
 

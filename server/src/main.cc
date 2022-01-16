@@ -1,16 +1,17 @@
+#include "TCPServer.h"
 #include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <eventpp/eventdispatcher.h>
+#include <httpxx/Request.hpp>
 #include <iostream>
+#include <map>
 #include <netinet/in.h>
+#include <regex>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
-#include <regex>
-#include <map>
-#include <httpxx/Request.hpp>
 
 #define HTTP_PORT 8000
 #define TCP_PORT 16666
@@ -59,18 +60,17 @@ void setupSocket(int *sockfd, socklen_t *socklen, bool *err, int port) {
   }
 }
 
-
 int main() {
   spdlog::info("Starting notify daemon");
   signal(SIGINT, signalHandler);
-  
+
   if (getenv("DEBUG")) {
-  	spdlog::set_level(spdlog::level::debug);
-	dispatcher.appendListener(1, [](const std::string &s) { 
-			spdlog::debug("RecvEvent with message: {}", s);
-	});
+    spdlog::set_level(spdlog::level::debug);
+    dispatcher.appendListener(1, [](const std::string &s) {
+      spdlog::debug("RecvEvent with message: {}", s);
+    });
   }
-  
+
   std::thread httpworker([]() {
     volatile bool shouldStop = false;
     int sockfd;
@@ -100,13 +100,13 @@ int main() {
       char buff[1024] = {0};
       int ret = recv(newfd, buff, 1023, 0);
       if (ret > 0) {
-	http::Request request;
-	request.feed(buff, sizeof(buff));
-	spdlog::debug("User-Agent: {}", request.header("User-Agent"));
-	spdlog::debug("Path: {}", request.url());
-	if (request.url() != "/") {
-		dispatcher.dispatch(1, request.url().substr(1));
-	}
+        http::Request request;
+        request.feed(buff, sizeof(buff));
+        spdlog::debug("User-Agent: {}", request.header("User-Agent"));
+        spdlog::debug("Path: {}", request.url());
+        if (request.url() != "/") {
+          dispatcher.dispatch(1, request.url().substr(1));
+        }
       }
       std::string rsp = "200 OK";
       memset(buff, 0x00, 1024);
@@ -123,11 +123,11 @@ int main() {
     spdlog::info("Stopped HTTP worker");
   });
 
-  std::thread tcpworker([]() {
-	
-  });
+  TCPServer server;
+
+  dispatcher.appendListener(666, [&server](std::string) { server.stop(); });
 
   httpworker.join();
-  tcpworker.join();
+  server.join();
   return 0;
 }
