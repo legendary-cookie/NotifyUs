@@ -12,7 +12,8 @@
 #include <map>
 #include <httpxx/Request.hpp>
 
-#define PORT 8000
+#define HTTP_PORT 8000
+#define TCP_PORT 16666
 
 eventpp::EventDispatcher<int, void(const std::string &)> dispatcher;
 
@@ -27,32 +28,32 @@ void signalHandler(int signum) {
   exit(signum);
 }
 
-void setupHTTPSocket(int *sockfd, socklen_t *socklen, bool *err) {
+void setupSocket(int *sockfd, socklen_t *socklen, bool *err, int port) {
   *sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (*sockfd < 0) {
-    spdlog::critical("HTTP: socket error");
+    spdlog::critical("Socket creation: socket error");
     *err = true;
     return;
   }
   int yes = 1;
   if (setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-    spdlog::critical("HTTP: setsockopt error");
+    spdlog::critical("Socket creation: setsockopt error");
     *err = true;
     return;
   }
   struct sockaddr_in lst_addr;
   lst_addr.sin_family = AF_INET;
-  lst_addr.sin_port = htons(PORT);
+  lst_addr.sin_port = htons(port);
   lst_addr.sin_addr.s_addr = htonl(INADDR_ANY);
   *socklen = sizeof(struct sockaddr_in);
   int ret = bind(*sockfd, (struct sockaddr *)&lst_addr, *socklen);
   if (ret < 0) {
-    spdlog::critical("HTTP: bind error");
+    spdlog::critical("Socket creation: bind error");
     *err = true;
     return;
   }
   if (listen(*sockfd, 5) < 0) {
-    spdlog::critical("HTTP: listen error");
+    spdlog::critical("Socket creation: listen error");
     *err = true;
     return;
   }
@@ -79,10 +80,11 @@ int main() {
     dispatcher.appendListener(
         666, [&shouldStop](std::string) { shouldStop = true; });
 
-    setupHTTPSocket(&sockfd, &socklen, &err);
+    setupSocket(&sockfd, &socklen, &err, HTTP_PORT);
     if (err) {
       spdlog::critical("HTTP Socket creation failed");
       shouldStop = true;
+      dispatcher.dispatch(666, "");
     } else {
       spdlog::info("Started HTTP worker");
     }
@@ -90,11 +92,11 @@ int main() {
       struct sockaddr_in cli_addr;
       int newfd = accept(sockfd, (struct sockaddr *)&cli_addr, &socklen);
       if (newfd < 0) {
-        spdlog::error("error accepting connection");
+        spdlog::error("error accepting HTTP connection");
         continue;
       }
       spdlog::debug("---");
-      spdlog::debug("handling new connection");
+      spdlog::debug("handling new HTTP connection");
       char buff[1024] = {0};
       int ret = recv(newfd, buff, 1023, 0);
       if (ret > 0) {
@@ -121,6 +123,11 @@ int main() {
     spdlog::info("Stopped HTTP worker");
   });
 
+  std::thread tcpworker([]() {
+	
+  });
+
   httpworker.join();
+  tcpworker.join();
   return 0;
 }

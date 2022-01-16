@@ -19,3 +19,4 @@ target_include_directories(notifyd
         ${PROJECT_SOURCE_DIR}/include
 	${PROJECT_SOURCE_DIR}/lib/httpxx
 )
+
