@@ -23,12 +23,13 @@ void ConnectionHandler::stop() {
 }
 
 void ConnectionHandler::threadFunc() {
-  dispatcher.appendListener(1, [&](const std::string &s) {
+  auto handle = dispatcher.appendListener(1, [&](const std::string &s) {
     this->sendMessage(s);
   });
-  //while (!this->m_terminate) {
+  while (!this->m_terminate) {
     //std::string msg = this->readMessage();
-  //}
+  }
+  dispatcher.removeListener(1, handle);
 }
 
 std::string ConnectionHandler::readMessage() {
